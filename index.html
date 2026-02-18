@@ -339,8 +339,6 @@ document.getElementById('fD').value = new Date().toISOString().split('T')[0];
 // ── Load / Save ───────────────────────────────────────────────────
 async function loadData() {
   const saved = lsLoad();
-  const dbgInfo = 'lsLoad type=' + typeof saved + ', isArr=' + Array.isArray(saved) + ', len=' + (saved ? saved.length : 'null');
-  alert('DEBUG: ' + dbgInfo);
   P = (saved && Array.isArray(saved) && saved.length > 0) ? saved : [...SEED];
   if (!saved || !saved.length) lsSave(P);
   render();
