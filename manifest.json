@@ -1,17 +1,17 @@
 {
-    "name": "Payments",
-    "short_name": "Payments",
-    "description": "Трекер платежей",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#0b0c1e",
-    "theme_color": "#0b0c1e",
-    "icons": [
-        {
-            "src": "./icon.png",
-            "sizes": "192x192 512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
+  "name": "Payments",
+  "short_name": "Payments",
+  "description": "Трекер платежей",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0c1e",
+  "theme_color": "#0b0c1e",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
