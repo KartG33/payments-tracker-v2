@@ -162,10 +162,17 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:poi
   </div>
 </div>
 
-<button class="export-btn" onclick="exportXlsx()">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-  Excel
-</button>
+<div class="tool-btns">
+  <button class="t-btn" onclick="exportXlsx()" title="Экспорт в Excel">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Экспорт
+  </button>
+  <button class="t-btn" id="xz" onclick="document.getElementById('xf').click()" title="Импорт из Excel">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Импорт <span id="xfn" style="font-size:10px;color:var(--acc2);margin-left:2px"></span>
+  </button>
+  <input type="file" id="xf" accept=".xlsx" style="display:none" onchange="importX(this)">
+</div>
 
 <button class="fab" id="fab" onclick="toggleSh()">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -190,13 +197,6 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:poi
   <div class="btn-row">
     <button class="btn-cancel" onclick="closeSh()">Отмена</button>
     <button class="btn-save" onclick="saveEntry()">Сохранить</button>
-  </div>
-  <hr class="divider">
-  <div class="sec-lbl">Импорт из Excel (.xlsx)</div>
-  <div class="upzone" id="xz">
-    <input type="file" id="xf" accept=".xlsx" onchange="importX(this)">
-    <div class="up-txt">Payments.xlsx</div>
-    <div class="up-fn" id="xfn"></div>
   </div>
 </div>
 
@@ -374,10 +374,15 @@ const IC=[
   [['visual studio','vscode'],'💻'],[['hugging'],'🤗'],
   [['obsidian'],'💎'],[['syncthing','drive sync'],'🔄'],[['betking'],'🎲'],
 ];
-function ico(s){const l=(s||'').toLowerCase();for(const[k,v]of IC)if(k.some(x=>l.includes(x)))return v;return'💳';}
+function ico(s){
+  const l=(s||'').toLowerCase();
+  const found = IC.find(([keys]) => keys.some(k => l.includes(k)));
+  return found ? found[1] : '💳';
+}
 const MO=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const MS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-function fa(n){return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});}
+const _cur = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fa(n) { return _cur.format(n || 0); }
 function fd(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${parseInt(day)} ${MS[parseInt(m)-1]} ${y}`;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function hl(t,q){if(!q)return esc(t);return esc(t).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
@@ -419,15 +424,15 @@ async function saveEntry(){
   const svc=document.getElementById('fS').value.trim(),amt=document.getElementById('fA').value,dt=document.getElementById('fD').value,eid=document.getElementById('editId').value;
   if(!svc){shake('fS');return;}if(!amt||isNaN(amt)||Number(amt)<=0){shake('fA');return;}if(!dt){shake('fD');return;}
   if(eid){const i=P.findIndex(x=>x.id===eid);if(i>-1)P[i]={...P[i],service:svc,amount:parseFloat(amt),date:dt,filename:selFile||P[i].filename};}
-  else P.unshift({id:'n'+Date.now().toString(36),service:svc,amount:parseFloat(amt),date:dt,filename:selFile||''});
+  else P.unshift({id:crypto.randomUUID(),service:svc,amount:parseFloat(amt),date:dt,filename:selFile||''});
   await persistData();
   closeSh();render();
 }
 function shake(id){const el=document.getElementById(id);el.style.borderColor='var(--red)';el.animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:250});setTimeout(()=>el.style.borderColor='',800);el.focus();}
 
-function importX(inp){const f=inp.files[0];if(!f)return;document.getElementById('xfn').textContent='Загрузка…';loadXLSX().then(()=>{const r=new FileReader();r.onload=async e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1});let n=0;rows.slice(1).forEach(row=>{let d=row[0],ds='';if(d instanceof Date)ds=d.toISOString().split('T')[0];else if(typeof d==='string')ds=d.trim();else if(typeof d==='number'){const dt=new Date(Math.round((d-25569)*86400*1000));ds=dt.toISOString().split('T')[0];}if(!ds)return;const svc=String(row[1]||'').trim();if(!svc)return;const amt=parseFloat(String(row[2]||'0').replace(',','.'));const fn=String(row[3]||'').trim();if(!P.some(x=>x.date===ds&&x.service===svc&&Number(x.amount)===amt)){P.push({id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2),date:ds,service:svc,amount:amt,filename:fn});n++;}});await persistData();document.getElementById('xfn').textContent=`✓ Добавлено ${n}`;document.getElementById('xz').classList.add('has');closeSh();render();}catch(e){document.getElementById('xfn').textContent='Ошибка файла';}};r.readAsArrayBuffer(f);}).catch(()=>{document.getElementById('xfn').textContent='Нет сети';});}
+function importX(inp){const f=inp.files[0];if(!f)return;document.getElementById('xfn').textContent='Загрузка…';loadXLSX().then(()=>{const r=new FileReader();r.onload=async e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1});let n=0,u=0;rows.slice(1).forEach(row=>{const rid=String(row[0]||'').trim();let d=row[1],ds='';if(d instanceof Date)ds=d.toISOString().split('T')[0];else if(typeof d==='string')ds=d.trim();else if(typeof d==='number'){const dt=new Date(Math.round((d-25569)*86400*1000));ds=dt.toISOString().split('T')[0];}if(!ds)return;const svc=String(row[2]||'').trim(),amt=parseFloat(String(row[3]||'0').replace(',','.')),fn=String(row[4]||'').trim();if(!svc)return;const existingIdx=P.findIndex(x=>x.id===rid);if(existingIdx>-1){P[existingIdx]={...P[existingIdx],date:ds,service:svc,amount:amt,filename:fn||P[existingIdx].filename};u++;}else if(!P.some(x=>x.date===ds&&x.service===svc&&Number(x.amount)===amt)){P.push({id:rid||crypto.randomUUID(),date:ds,service:svc,amount:amt,filename:fn});n++;}});await persistData();document.getElementById('xfn').textContent=`+${n} / ~${u}`;document.getElementById('xz').classList.add('has');closeSh();render();}catch(e){document.getElementById('xfn').textContent='Ошибка файла';}};r.readAsArrayBuffer(f);}).catch(()=>{document.getElementById('xfn').textContent='Нет сети';});}
 
-function exportXlsx(){loadXLSX().then(()=>{const rows=filteredRows(),data=[['Дата','Сервис','Сумма','Имя файла'],...rows.map(r=>[r.date,r.service,r.amount,r.filename||''])],ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:12},{wch:36},{wch:12},{wch:42}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'payments');XLSX.writeFile(wb,`Payments${mode==='month'?'_'+curMonth:''}.xlsx`);}).catch(()=>alert('Нет сети'));}
+function exportXlsx(){loadXLSX().then(()=>{const rows=filteredRows(),data=[['ID','Дата','Сервис','Сумма','Имя файла'],...rows.map(r=>[r.id,r.date,r.service,r.amount,r.filename||''])],ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:20},{wch:12},{wch:36},{wch:12},{wch:42}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'payments');XLSX.writeFile(wb,`Payments${mode==='month'?'_'+curMonth:''}.xlsx`);}).catch(()=>alert('Нет сети'));}
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shOpen)closeSh();});
 loadData();
