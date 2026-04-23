@@ -162,6 +162,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:poi
   </div>
 </div>
 
+<<<<<<< HEAD
 <div class="tool-btns">
   <button class="t-btn" onclick="exportXlsx()" title="Экспорт в Excel">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -173,6 +174,12 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:poi
   </button>
   <input type="file" id="xf" accept=".xlsx" style="display:none" onchange="importX(this)">
 </div>
+=======
+<button class="export-btn" onclick="exportXlsx()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  Excel
+</button>
+>>>>>>> 20f882a0efc767a920d800acb687a6196e0ba082
 
 <button class="fab" id="fab" onclick="toggleSh()">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -198,6 +205,16 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:poi
     <button class="btn-cancel" onclick="closeSh()">Отмена</button>
     <button class="btn-save" onclick="saveEntry()">Сохранить</button>
   </div>
+<<<<<<< HEAD
+=======
+  <hr class="divider">
+  <div class="sec-lbl">Импорт из Excel (.xlsx)</div>
+  <div class="upzone" id="xz">
+    <input type="file" id="xf" accept=".xlsx" onchange="importX(this)">
+    <div class="up-txt">Payments.xlsx</div>
+    <div class="up-fn" id="xfn"></div>
+  </div>
+>>>>>>> 20f882a0efc767a920d800acb687a6196e0ba082
 </div>
 
 <script>
@@ -374,6 +391,7 @@ const IC=[
   [['visual studio','vscode'],'💻'],[['hugging'],'🤗'],
   [['obsidian'],'💎'],[['syncthing','drive sync'],'🔄'],[['betking'],'🎲'],
 ];
+<<<<<<< HEAD
 function ico(s){
   const l=(s||'').toLowerCase();
   const found = IC.find(([keys]) => keys.some(k => l.includes(k)));
@@ -383,6 +401,12 @@ const MO=['Январь','Февраль','Март','Апрель','Май','И
 const MS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 const _cur = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function fa(n) { return _cur.format(n || 0); }
+=======
+function ico(s){const l=(s||'').toLowerCase();for(const[k,v]of IC)if(k.some(x=>l.includes(x)))return v;return'💳';}
+const MO=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+function fa(n){return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});}
+>>>>>>> 20f882a0efc767a920d800acb687a6196e0ba082
 function fd(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${parseInt(day)} ${MS[parseInt(m)-1]} ${y}`;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function hl(t,q){if(!q)return esc(t);return esc(t).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
