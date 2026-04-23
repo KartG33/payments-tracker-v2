@@ -140,6 +140,9 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
   transition:.34s;
 }
 .sheet.on{transform:translateY(0);}
+.sheet-title{padding:20px 0 15px;text-align:center;color:var(--txt2);font-size:13px;font-family:var(--mono);}
+.delete-btn{margin-top:10px;background:var(--red);color:#fff;border:none;justify-content:center;height:48px;}
+.delete-btn:active{background:var(--red);transform:scale(.96);}
 </style>
 
 </head>
@@ -187,7 +190,8 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
 </button>
 
 <div class="sheet" id="sheet">
-  <div style="padding:20px 0 15px;text-align:center;color:var(--txt2);font-size:13px;font-family:var(--mono)">НОВЫЙ ПЛАТЕЖ</div>
+  <div id="sheet-title" class="sheet-title">НОВЫЙ ПЛАТЕЖ</div>
+  <input type="hidden" id="f-id">
   <input type="date" id="f-date" class="srch" style="margin-bottom:10px;padding-left:15px">
   <input type="text" id="f-svc" class="srch" placeholder="Название сервиса" style="margin-bottom:10px;padding-left:15px">
   <input type="number" id="f-amt" class="srch" placeholder="Сумма" style="margin-bottom:20px;padding-left:15px">
@@ -195,6 +199,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
     <button class="t-btn" style="justify-content:center;height:48px" onclick="closeSh()">Отмена</button>
     <button class="t-btn" style="justify-content:center;height:48px;background:var(--acc);color:#fff;border:none" onclick="saveEntry()">Сохранить</button>
   </div>
+  <button class="t-btn delete-btn" id="delete-btn" onclick="deleteEntry()" style="display:none;width:100%">Удалить платеж</button>
 </div>
 
 <script>
@@ -229,7 +234,7 @@ function render(){
     const div = document.createElement('div');
     div.className = 'card';
     div.innerHTML = `
-      <div class="card-main">
+      <div class="card-main" onclick="editEntry('${r.id}')">
         <div class="c-ico">${ico(r.service)}</div>
         <div class="c-body">
           <div class="c-top"><span class="c-name">${r.service}</span><span class="c-amt">${fa(r.amount)}</span></div>
@@ -282,26 +287,69 @@ function toggleSh(){
   document.getElementById('sheet').classList.toggle('on');
   document.getElementById('fab').classList.toggle('open');
   if(document.getElementById('sheet').classList.contains('on')){
+    // Reset form for new entry
+    document.getElementById('sheet-title').textContent = 'НОВЫЙ ПЛАТЕЖ';
+    document.getElementById('f-id').value = '';
     document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('f-svc').value = '';
+    document.getElementById('f-amt').value = '';
+    document.getElementById('delete-btn').style.display = 'none';
   }
 }
 
 function closeSh(){
   document.getElementById('sheet').classList.remove('on');
   document.getElementById('fab').classList.remove('open');
+  // Clear form fields after closing
+  document.getElementById('f-id').value = '';
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-svc').value = '';
+  document.getElementById('f-amt').value = '';
 }
 
 async function saveEntry(){
+  const id = document.getElementById('f-id').value;
   const date = document.getElementById('f-date').value;
   const svc = document.getElementById('f-svc').value.trim();
   const amt = parseFloat(document.getElementById('f-amt').value);
   if(!date || !svc || isNaN(amt)) return;
-  P.push({ id: crypto.randomUUID(), date, service: svc, amount: amt, filename: '' });
+
+  if (id) {
+    // Editing existing entry
+    const index = P.findIndex(p => p.id === id);
+    if (index !== -1) {
+      P[index] = { ...P[index], date, service: svc, amount: amt };
+    }
+  } else {
+    // Adding new entry
+    P.push({ id: crypto.randomUUID(), date, service: svc, amount: amt, filename: '' });
+  }
   await persistData();
   closeSh();
   render();
-  document.getElementById('f-svc').value = '';
-  document.getElementById('f-amt').value = '';
+}
+
+function editEntry(id){
+  const payment = P.find(p => p.id === id);
+  if (!payment) return;
+  document.getElementById('sheet-title').textContent = 'РЕДАКТИРОВАТЬ ПЛАТЕЖ';
+  document.getElementById('f-id').value = payment.id;
+  document.getElementById('f-date').value = payment.date;
+  document.getElementById('f-svc').value = payment.service;
+  document.getElementById('f-amt').value = payment.amount;
+  document.getElementById('delete-btn').style.display = 'flex'; // Show delete button
+  toggleSh(); // Open the sheet
+}
+
+async function deleteEntry(){
+  const id = document.getElementById('f-id').value;
+  if (!id) return;
+  if (confirm('Вы уверены, что хотите удалить этот платеж?')) {
+    P = P.filter(p => p.id !== id);
+    await persistData();
+    closeSh();
+    render();
+  }
 }
 
 function loadXLSX(){
