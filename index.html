@@ -143,6 +143,19 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
 .sheet-title{padding:20px 0 15px;text-align:center;color:var(--txt2);font-size:13px;font-family:var(--mono);}
 .delete-btn{margin-top:10px;background:var(--red);color:#fff;border:none;justify-content:center;height:48px;}
 .delete-btn:active{background:var(--red);transform:scale(.96);}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:none;}
+.overlay.on{display:block;}
+
+/* TOAST */
+.toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-10px);
+  z-index:500;background:var(--bg3);border:1px solid var(--border);
+  border-radius:12px;padding:10px 18px;font-family:var(--mono);font-size:12px;
+  color:var(--acc2);opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 
 </head>
@@ -172,6 +185,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
 </div>
 
 <div class="list" id="list"></div>
+<div class="toast" id="toast"></div>
 
 <div class="tool-btns">
   <button class="t-btn" onclick="exportXlsx()">
@@ -189,6 +203,8 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
 
+<div class="overlay" id="overlay" onclick="closeSh()"></div>
+
 <div class="sheet" id="sheet">
   <div id="sheet-title" class="sheet-title">НОВЫЙ ПЛАТЕЖ</div>
   <input type="hidden" id="f-id">
@@ -203,28 +219,102 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
 </div>
 
 <script>
-let P = JSON.parse(localStorage.getItem('payments') || '[]');
+// ─── IndexedDB ────────────────────────────────────────────────────────────────
+const DB_NAME = 'payments-db';
+const DB_VER  = 1;
+const STORE   = 'payments';
+
+let db = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    if (db) return res(db);
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        const store = d.createObjectStore(STORE, { keyPath: 'id' });
+        store.createIndex('date', 'date', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+async function dbGetAll() {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx  = d.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+async function dbPut(record) {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx  = d.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(record);
+    req.onsuccess = () => res();
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+async function dbDelete(id) {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx  = d.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => res();
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+// Миграция из localStorage (одноразово)
+async function migrateFromLocalStorage() {
+  try {
+    const old = localStorage.getItem('payments');
+    if (!old) return;
+    const arr = JSON.parse(old);
+    if (!arr || !arr.length) return;
+    for (const r of arr) {
+      if (r && r.id) await dbPut(r);
+    }
+    localStorage.removeItem('payments');
+    showToast(`Мигрировано ${arr.length} записей`);
+  } catch(e) { /* silent */ }
+}
+
+// ─── APP STATE ────────────────────────────────────────────────────────────────
+let P = [];
 let mode = 'all', curMonth = new Date().toISOString().slice(0, 7);
 
+// ─── ICONS ───────────────────────────────────────────────────────────────────
 const IC = [
   [['google','youtube'],'🔴'],[['netflix'],'🎬'],[['spotify'],'🎧'],[['apple','icloud'],'🍎'],
-  [['chatgpt','openai','claude','hugging'],'🤖'],[['github','gitlab','vscode'],'💻'],
-  [['digitalocean','aws','vps','hetzner','linode','server'],'☁️'],[['figma'],'🎨'],
-  [['telegram','tg'],'✈️'],[['adobe'],'🧱'],[['psn','playstation','steam','epic','xbox'],'🎮']
+  [['amazon','aws'],'📦'],[['microsoft','xbox','office'],'🪟'],[['telegram'],'✈️'],
+  [['notion'],'📝'],[['figma'],'🎨'],[['github'],'🐙'],[['dropbox'],'📦'],
+  [['adobe'],'🅰️'],[['openai','chatgpt'],'🤖'],[['claude','anthropic'],'🧠'],
 ];
-
-function ico(s){
-  const l=(s||'').toLowerCase();
-  const found = IC.find(([keys]) => keys.some(k => l.includes(k)));
-  return found ? found[1] : '💳';
-}
+function ico(s){ const l=(s||'').toLowerCase(); const f=IC.find(([k])=>k.some(k=>l.includes(k))); return f?f[1]:'💳'; }
 
 const _cur = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function fa(n) { return _cur.format(n || 0); }
 function fd(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${parseInt(day)} ${['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(m)-1]} ${y}`;}
 
-async function persistData(){ localStorage.setItem('payments', JSON.stringify(P)); }
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 2500);
+}
 
+// ─── RENDER ──────────────────────────────────────────────────────────────────
 function render(){
   const list = document.getElementById('list');
   const filtered = filteredRows();
@@ -255,6 +345,7 @@ function filteredRows(){
   });
 }
 
+// ─── MODES ───────────────────────────────────────────────────────────────────
 function setMode(m){
   mode = m;
   document.getElementById('t-all').classList.toggle('on', m==='all');
@@ -283,11 +374,15 @@ function clearSrch(){
   onSrch();
 }
 
+// ─── SHEET ───────────────────────────────────────────────────────────────────
 function toggleSh(){
-  document.getElementById('sheet').classList.toggle('on');
-  document.getElementById('fab').classList.toggle('open');
-  if(document.getElementById('sheet').classList.contains('on')){
-    // Reset form for new entry
+  const sheet = document.getElementById('sheet');
+  const fab   = document.getElementById('fab');
+  const ov    = document.getElementById('overlay');
+  sheet.classList.toggle('on');
+  fab.classList.toggle('open');
+  ov.classList.toggle('on');
+  if(sheet.classList.contains('on')){
     document.getElementById('sheet-title').textContent = 'НОВЫЙ ПЛАТЕЖ';
     document.getElementById('f-id').value = '';
     document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
@@ -300,31 +395,32 @@ function toggleSh(){
 function closeSh(){
   document.getElementById('sheet').classList.remove('on');
   document.getElementById('fab').classList.remove('open');
-  // Clear form fields after closing
+  document.getElementById('overlay').classList.remove('on');
   document.getElementById('f-id').value = '';
   document.getElementById('f-date').value = '';
   document.getElementById('f-svc').value = '';
   document.getElementById('f-amt').value = '';
 }
 
+// ─── CRUD ────────────────────────────────────────────────────────────────────
 async function saveEntry(){
-  const id = document.getElementById('f-id').value;
-  const date = document.getElementById('f-date').value;
+  const id  = document.getElementById('f-id').value;
+  const date= document.getElementById('f-date').value;
   const svc = document.getElementById('f-svc').value.trim();
   const amt = parseFloat(document.getElementById('f-amt').value);
   if(!date || !svc || isNaN(amt)) return;
 
   if (id) {
-    // Editing existing entry
-    const index = P.findIndex(p => p.id === id);
-    if (index !== -1) {
-      P[index] = { ...P[index], date, service: svc, amount: amt };
+    const idx = P.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      P[idx] = { ...P[idx], date, service: svc, amount: amt };
+      await dbPut(P[idx]);
     }
   } else {
-    // Adding new entry
-    P.push({ id: crypto.randomUUID(), date, service: svc, amount: amt, filename: '' });
+    const rec = { id: crypto.randomUUID(), date, service: svc, amount: amt };
+    P.push(rec);
+    await dbPut(rec);
   }
-  await persistData();
   closeSh();
   render();
 }
@@ -337,21 +433,22 @@ function editEntry(id){
   document.getElementById('f-date').value = payment.date;
   document.getElementById('f-svc').value = payment.service;
   document.getElementById('f-amt').value = payment.amount;
-  document.getElementById('delete-btn').style.display = 'flex'; // Show delete button
-  toggleSh(); // Open the sheet
+  document.getElementById('delete-btn').style.display = 'flex';
+  toggleSh();
 }
 
 async function deleteEntry(){
   const id = document.getElementById('f-id').value;
   if (!id) return;
-  if (confirm('Вы уверены, что хотите удалить этот платеж?')) {
+  if (confirm('Удалить этот платеж?')) {
+    await dbDelete(id);
     P = P.filter(p => p.id !== id);
-    await persistData();
     closeSh();
     render();
   }
 }
 
+// ─── XLSX ────────────────────────────────────────────────────────────────────
 function loadXLSX(){
   return new Promise((res, rej) => {
     if(window.XLSX) return res();
@@ -377,6 +474,7 @@ function importX(inp){
         const iID=h.indexOf('id'), iDt=h.indexOf('дата'), iSv=h.indexOf('сервис'), iAm=h.indexOf('сумма');
         if(iDt===-1||iSv===-1||iAm===-1){ st.textContent='⚠ Формат?'; return; }
         let n=0,u=0;
+        const ops = [];
         rows.slice(1).forEach(row=>{
           let d=row[iDt], ds='';
           if(d instanceof Date) ds=d.toISOString().split('T')[0];
@@ -390,13 +488,19 @@ function importX(inp){
           const exIdx=P.findIndex(x=>rid&&x.id===rid);
           if(exIdx>-1){
             P[exIdx]={...P[exIdx],date:ds,service:svc,amount:amt};
+            ops.push(dbPut(P[exIdx]));
             u++;
           } else if(!P.some(x=>x.date===ds&&x.service===svc&&Math.abs(x.amount-amt)<0.1)){
-            P.push({id:rid||crypto.randomUUID(),date:ds,service:svc,amount:amt,filename:''});
+            const rec={id:rid||crypto.randomUUID(),date:ds,service:svc,amount:amt};
+            P.push(rec);
+            ops.push(dbPut(rec));
             n++;
           }
         });
-        await persistData(); st.textContent=`+${n}/~${u}`; render();
+        await Promise.all(ops);
+        st.textContent=`+${n}/~${u}`;
+        showToast(`Импорт: +${n} новых, ~${u} обновлено`);
+        render();
       } catch(err){ st.textContent='⚠ Ошибка'; } finally { inp.value=''; }
     };
     r.readAsArrayBuffer(f);
@@ -415,11 +519,18 @@ function exportXlsx(){
   }).catch(()=>alert('Нет сети'));
 }
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+// ─── INIT ────────────────────────────────────────────────────────────────────
+async function init() {
+  await migrateFromLocalStorage();
+  P = await dbGetAll();
+  render();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 }
 
-render();
+init();
 </script>
 
 </body>
