@@ -528,4 +528,135 @@ function closeSh(){
 async function saveEntry(){
   const id  = document.getElementById('f-id').value;
   const date= document.getElementById('f-date').value;
-  const svc = document.getElementById('f-sv
+  const svc = document.getElementById('f-svc').value.trim();
+  const amt = parseFloat(document.getElementById('f-amt').value);
+  if(!date || !svc || isNaN(amt)) return;
+
+  if (id) {
+    const idx = P.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      P[idx] = { ...P[idx], date, service: svc, amount: amt };
+      await dbPut(P[idx]);
+    }
+  } else {
+    const rec = { id: crypto.randomUUID(), date, service: svc, amount: amt };
+    P.push(rec);
+    await dbPut(rec);
+  }
+  closeSh();
+  render();
+}
+
+function editEntry(id){
+  const payment = P.find(p => p.id === id);
+  if (!payment) return;
+  document.getElementById('sheet-title').textContent = 'РЕДАКТИРОВАТЬ ПЛАТЕЖ';
+  document.getElementById('f-id').value = payment.id;
+  document.getElementById('f-date').value = payment.date;
+  document.getElementById('f-svc').value = payment.service;
+  document.getElementById('f-amt').value = payment.amount;
+  document.getElementById('delete-btn').style.display = 'flex';
+  // Открываем шит напрямую без сброса полей
+  document.getElementById('sheet').classList.add('on');
+  document.getElementById('fab').classList.add('open');
+  document.getElementById('overlay').classList.add('on');
+}
+
+async function deleteEntry(){
+  const id = document.getElementById('f-id').value;
+  if (!id) return;
+  if (confirm('Удалить этот платеж?')) {
+    await dbDelete(id);
+    P = P.filter(p => p.id !== id);
+    closeSh();
+    render();
+  }
+}
+
+// ─── XLSX ────────────────────────────────────────────────────────────────────
+function loadXLSX(){
+  return new Promise((res, rej) => {
+    if(window.XLSX) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function importX(inp){
+  const f=inp.files[0]; if(!f) return;
+  const st=document.getElementById('xfn'); st.textContent='...';
+  loadXLSX().then(()=>{
+    const r=new FileReader();
+    r.onload=async e=>{
+      try {
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true}),
+              ws=wb.Sheets[wb.SheetNames[0]],
+              rows=XLSX.utils.sheet_to_json(ws,{header:1});
+        if(!rows.length) return;
+        const h=rows[0].map(v=>String(v||'').toLowerCase().trim());
+        const iID=h.indexOf('id'), iDt=h.indexOf('дата'), iSv=h.indexOf('сервис'), iAm=h.indexOf('сумма');
+        if(iDt===-1||iSv===-1||iAm===-1){ st.textContent='⚠ Формат?'; return; }
+        let n=0,u=0;
+        const ops = [];
+        rows.slice(1).forEach(row=>{
+          let d=row[iDt], ds='';
+          if(d instanceof Date) ds=d.toISOString().split('T')[0];
+          else if(typeof d==='number'){ const dt=new Date(Math.round((d-25569)*86400*1000)); ds=dt.toISOString().split('T')[0]; }
+          else ds=String(d||'').trim();
+          if(!ds||ds.length<10) return;
+          const rid=iID>-1?String(row[iID]||'').trim():'',
+                svc=String(row[iSv]||'').trim(),
+                amt=parseFloat(String(row[iAm]||'0').replace(',','.'));
+          if(!svc||isNaN(amt)) return;
+          const exIdx=P.findIndex(x=>rid&&x.id===rid);
+          if(exIdx>-1){
+            P[exIdx]={...P[exIdx],date:ds,service:svc,amount:amt};
+            ops.push(dbPut(P[exIdx]));
+            u++;
+          } else if(!P.some(x=>x.date===ds&&x.service===svc&&Math.abs(x.amount-amt)<0.1)){
+            const rec={id:rid||crypto.randomUUID(),date:ds,service:svc,amount:amt};
+            P.push(rec);
+            ops.push(dbPut(rec));
+            n++;
+          }
+        });
+        await Promise.all(ops);
+        st.textContent=`+${n}/~${u}`;
+        showToast(`Импорт: +${n} новых, ~${u} обновлено`);
+        render();
+      } catch(err){ st.textContent='⚠ Ошибка'; } finally { inp.value=''; }
+    };
+    r.readAsArrayBuffer(f);
+  }).catch(()=>st.textContent='⚠ Сеть');
+}
+
+function exportXlsx(){
+  loadXLSX().then(()=>{
+    const rows=filteredRows(),
+          data=[['ID','Дата','Сервис','Сумма'],...rows.map(r=>[r.id,r.date,r.service,r.amount])],
+          ws=XLSX.utils.aoa_to_sheet(data);
+    ws['!cols']=[{wch:20},{wch:12},{wch:36},{wch:12}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'payments');
+    XLSX.writeFile(wb,`Payments_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }).catch(()=>alert('Нет сети'));
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+async function init() {
+  await migrateFromLocalStorage();
+  P = await dbGetAll();
+  render();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
