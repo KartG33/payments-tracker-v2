@@ -2,14 +2,14 @@
   "name": "Payments",
   "short_name": "Payments",
   "description": "Трекер платежей",
-  "start_url": "/payments-tracker-v2/index.html",
-  "scope": "/payments-tracker-v2/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b0c1e",
   "theme_color": "#0b0c1e",
   "icons": [
     {
-      "src": "/payments-tracker-v2/icon.png",
+      "src": "./icon.png",
       "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "any maskable"
