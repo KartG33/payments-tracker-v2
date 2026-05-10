@@ -1,16 +1,32 @@
 {
-  "name": "Payments",
+  "name": "Payments Tracker",
   "short_name": "Payments",
   "description": "Трекер платежей",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b0c1e",
-  "theme_color": "#0b0c1e",
+  "theme_color": "#4f46e5",
   "icons": [
     {
-      "src": "./icon.png",
-      "sizes": "192x192 512x512",
+      "src": "./icons/icon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
