@@ -9,8 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Payments">
 <title>Payments</title>
+<link rel="icon" type="image/x-icon" href="./icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32x32.png">
+<link rel="apple-touch-icon" href="./icons/icon-192x192.png">
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="./icon.png">
 
 <style>
 :root {
@@ -244,7 +247,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sa
 </div>
 
 <script>
-// ─── IndexedDB ────────────────────────────────────────────────────────────────
+// ─── IndexedDB ─────────────────────────────────────────────────────────────────
 const DB_NAME = 'payments-db';
 const DB_VER  = 1;
 const STORE   = 'payments';
@@ -312,11 +315,11 @@ async function migrateFromLocalStorage() {
   } catch(e) { /* silent */ }
 }
 
-// ─── APP STATE ────────────────────────────────────────────────────────────────
+// ─── APP STATE ──────────────────────────────────────────────────────────────────
 let P = [];
 let mode = 'all', curMonth = new Date().toISOString().slice(0, 7);
 
-// ─── ICONS ───────────────────────────────────────────────────────────────────
+// ─── ICONS ──────────────────────────────────────────────────────────────────────
 const IC = [
   [['google','youtube'],'🔴'],[['netflix'],'🎬'],[['spotify'],'🎧'],[['apple','icloud'],'🍎'],
   [['amazon','aws'],'📦'],[['microsoft','xbox','office'],'🪟'],[['telegram'],'✈️'],
@@ -329,7 +332,7 @@ const _cur = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumF
 function fa(n) { return _cur.format(n || 0); }
 function fd(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${parseInt(day)} ${['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(m)-1]} ${y}`;}
 
-// ─── TOAST ───────────────────────────────────────────────────────────────────
+// ─── TOAST ──────────────────────────────────────────────────────────────────────
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -339,7 +342,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('on'), 2500);
 }
 
-// ─── RENDER ──────────────────────────────────────────────────────────────────
+// ─── RENDER ──────────────────────────────────────────────────────────────────────
 function render(){
   const list = document.getElementById('list');
   const filtered = filteredRows();
@@ -467,7 +470,7 @@ function filteredRows(){
   });
 }
 
-// ─── MODES ───────────────────────────────────────────────────────────────────
+// ─── MODES ──────────────────────────────────────────────────────────────────────
 function setMode(m){
   mode = m;
   document.getElementById('t-all').classList.toggle('on', m==='all');
@@ -496,7 +499,7 @@ function clearSrch(){
   onSrch();
 }
 
-// ─── SHEET ───────────────────────────────────────────────────────────────────
+// ─── SHEET ──────────────────────────────────────────────────────────────────────
 function toggleSh(){
   const sheet = document.getElementById('sheet');
   const fab   = document.getElementById('fab');
@@ -524,7 +527,7 @@ function closeSh(){
   document.getElementById('f-amt').value = '';
 }
 
-// ─── CRUD ────────────────────────────────────────────────────────────────────
+// ─── CRUD ────────────────────────────────────────────────────────────────────────
 async function saveEntry(){
   const id  = document.getElementById('f-id').value;
   const date= document.getElementById('f-date').value;
@@ -573,7 +576,7 @@ async function deleteEntry(){
   }
 }
 
-// ─── XLSX ────────────────────────────────────────────────────────────────────
+// ─── XLSX ────────────────────────────────────────────────────────────────────────
 function loadXLSX(){
   return new Promise((res, rej) => {
     if(window.XLSX) return res();
@@ -644,7 +647,7 @@ function exportXlsx(){
   }).catch(()=>alert('Нет сети'));
 }
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
+// ─── INIT ────────────────────────────────────────────────────────────────────────
 async function init() {
   await migrateFromLocalStorage();
   P = await dbGetAll();
